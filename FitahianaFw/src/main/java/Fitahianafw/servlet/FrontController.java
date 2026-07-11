@@ -9,15 +9,16 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import Fitahianafw.annotation.MyController;
+import Fitahianafw.annotation.Controller;
 
+@Deprecated
 public class FrontController extends HttpServlet {
     List<Class<?>> list = new ArrayList<>();
 
     @Override
     public void init() {
         try {
-            list = Fitahianafw.util.ClasspathScanner.getClassesAnnotatedWith(MyController.class, "");
+            list = Fitahianafw.util.ClasspathScanner.getClassesAnnotatedWith(Controller.class, "Fitahianafw");
         } catch (Exception e) {
             
         }

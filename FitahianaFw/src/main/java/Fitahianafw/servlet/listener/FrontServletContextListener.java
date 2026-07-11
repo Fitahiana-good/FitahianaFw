@@ -1,7 +1,8 @@
 package Fitahianafw.servlet.listener;
 
+import Fitahianafw.annotation.Controller;
 import Fitahianafw.mapping.UrlProcessor;
-import Fitahianafw.util.ScanUtil;
+import Fitahianafw.util.ClasspathScanner;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
@@ -22,7 +23,10 @@ public class FrontServletContextListener implements ServletContextListener {
 
         UrlProcessor urlProcessor = new UrlProcessor();
         try {
-            ScanUtil.fillUrlProcessor(controllerPackage, urlProcessor);
+            for (Class<?> controllerClass : ClasspathScanner.getClassesAnnotatedWith(
+                    Controller.class, controllerPackage)) {
+                urlProcessor.processAnnotatedClass(controllerClass);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de l'initialisation du UrlProcessor", e);
         }

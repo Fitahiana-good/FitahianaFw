@@ -3,6 +3,7 @@ package Fitahianafw.util;
 import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -35,13 +36,13 @@ public class ClasspathScanner {
             if ("file".equals(protocol)) {
 
                 File dir = new File(URLDecoder.decode(resource.getFile(), StandardCharsets.UTF_8));
-                scanDirectory(dir, packageName, annotationClass, result); //Si c'est un fichier ou dossier
+                scanDirectory(dir, packageName, annotationClass, result, classLoader); //Si c'est un fichier ou dossier
 
             } else if ("jar".equals(protocol)) {
-
-                String jarPath = resource.getFile().substring(5, resource.getFile().indexOf('!')); //Retourne le chemin absolu du jar
-                try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8))) {
-                    scanJar(jar, packageName, annotationClass, result); //Si c'est une archive
+                JarURLConnection connection = (JarURLConnection) resource.openConnection();
+                connection.setUseCaches(false);
+                try (JarFile jar = connection.getJarFile()) {
+                    scanJar(jar, packageName, annotationClass, result, classLoader); //Si c'est une archive
                 }
             }
         }
@@ -50,7 +51,7 @@ public class ClasspathScanner {
 
     private static void scanDirectory(File dir, String packageName,
             Class<? extends Annotation> annotationClass,
-            List<Class<?>> result) throws ClassNotFoundException {
+            List<Class<?>> result, ClassLoader classLoader) throws ClassNotFoundException {
         if (!dir.exists())
             return;
         File[] files = dir.listFiles();
@@ -59,13 +60,15 @@ public class ClasspathScanner {
 
         for (File file : files) {
             if (file.isDirectory()) {
-                String sousPackage = packageName == null ? file.getName() : packageName + "." + file.getName();
-                scanDirectory(file, sousPackage, annotationClass, result); //Récursif si le file est un dossier
+                String sousPackage = packageName == null || packageName.isEmpty()
+                        ? file.getName()
+                        : packageName + "." + file.getName();
+                scanDirectory(file, sousPackage, annotationClass, result, classLoader); //Récursif si le file est un dossier
             } else if (file.getName().endsWith(".class")) {
-                String className = packageName == null
+                String className = packageName == null || packageName.isEmpty()
                         ? file.getName().substring(0, file.getName().length() - 6)
                         : packageName + "." + file.getName().substring(0, file.getName().length() - 6);
-                Class<?> clazz = Class.forName(className);
+                Class<?> clazz = classLoader.loadClass(className);
                 if (clazz.isAnnotationPresent(annotationClass)) {
                     result.add(clazz);
                 }
@@ -75,7 +78,7 @@ public class ClasspathScanner {
 
     private static void scanJar(JarFile jar, String packageName,
             Class<? extends Annotation> annotationClass,
-            List<Class<?>> result) throws ClassNotFoundException {
+            List<Class<?>> result, ClassLoader classLoader) throws ClassNotFoundException {
         Enumeration<JarEntry> entries = jar.entries(); //Récupérer les éléments du jar
 
         while (entries.hasMoreElements()) {
@@ -84,7 +87,7 @@ public class ClasspathScanner {
             if (entryName.endsWith(".class")) {
                 String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
                 if (packageName == null || packageName.isEmpty() || className.startsWith(packageName + ".")) {
-                    Class<?> clazz = Class.forName(className);
+                    Class<?> clazz = classLoader.loadClass(className);
                     if (clazz.isAnnotationPresent(annotationClass)) {
                         result.add(clazz);
                     }

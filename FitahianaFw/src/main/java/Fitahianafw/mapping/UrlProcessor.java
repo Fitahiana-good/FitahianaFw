@@ -27,6 +27,7 @@ public class UrlProcessor implements AnnotatedClassesProcessor {
             }
 
             UrlMapping mapping = method.getAnnotation(UrlMapping.class);
+            method.setAccessible(true);
             UrlKey key = new UrlKey(mapping.value(), mapping.httpMethod());
             if (urlMappings.containsKey(key)) {
                 throw new UrlAlreadyDefinedException(key, urlMappings.get(key));
@@ -35,12 +36,12 @@ public class UrlProcessor implements AnnotatedClassesProcessor {
         }
     }
 
-    public void executeRequest(UrlKey url) throws UrlNotSupportedException, ReflectiveOperationException {
+    public Object executeRequest(UrlKey url) throws UrlNotSupportedException, ReflectiveOperationException {
         if (!urlMappings.containsKey(url)) {
             throw new UrlNotSupportedException(url, urlMappings);
         }
         UrlControllerMap mapping = urlMappings.get(url);
-        mapping.getReflectMethod().invoke(mapping.getPrototypeSeed());
+        return mapping.getReflectMethod().invoke(mapping.getPrototypeSeed());
     }
 
     public List<Class<?>> getControllerClasses() {
