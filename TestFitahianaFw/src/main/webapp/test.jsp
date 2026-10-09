@@ -9,5 +9,6 @@
     <h1>${message}</h1>
     <p>Framework : ${nomFramework}</p>
     <p><a href="${pageContext.request.contextPath}/primitives.jsp">Tester le binding des types primitifs</a></p>
+    <p><a href="${pageContext.request.contextPath}/objet.jsp">Tester le binding d'un objet</a></p>
 </body>
 </html>

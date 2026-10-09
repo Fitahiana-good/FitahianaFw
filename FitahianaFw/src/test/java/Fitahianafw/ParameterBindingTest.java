@@ -70,8 +70,50 @@ class ParameterBindingTest {
     }
 
     @Test
-    void doesNotPopulateObjects() {
-        assertThrows(IllegalArgumentException.class, () -> execute("/object", Map.of()));
+    void bindsObjectFieldsAndPrimitiveArgumentTogether() throws Exception {
+        Object[] result = (Object[]) execute("/object", Map.of("nom", "Zoé", "age", "24",
+                "actif", "true", "note", "15.5", "page", "2"));
+        Person person = assertInstanceOf(Person.class, result[0]);
+        assertEquals("Zoé", person.nom);
+        assertEquals(24, person.age);
+        assertTrue(person.actif);
+        assertEquals(15.5, person.note);
+        assertEquals(2, result[1]);
+    }
+
+    @Test
+    void absentObjectFieldsKeepConstructorDefaultsAndEmptyWrapperBecomesNull() throws Exception {
+        Object[] result = (Object[]) execute("/object", Map.of("page", "1", "note", ""));
+        Person person = (Person) result[0];
+        assertEquals("inconnu", person.nom);
+        assertEquals(18, person.age);
+        assertFalse(person.actif);
+        assertNull(person.note);
+    }
+
+    @Test
+    void rejectsInvalidObjectFields() {
+        for (Map<String, String> values : Arrays.asList(Map.of("age", "abc"), Map.of("age", ""),
+                Map.of("actif", "yes"), Map.of("note", "invalide"))) {
+            assertThrows(ParameterBindingException.class, () -> execute("/object", values));
+        }
+    }
+
+    @Test
+    void bindsInheritedFieldsButDoesNotModifyStaticOrFinalFields() throws Exception {
+        ChildPerson person = (ChildPerson) execute("/inherited", Map.of("nom", "Jean", "age", "30",
+                "code", "7", "constant", "99", "shared", "99"));
+        Person parent = person;
+        assertEquals("Jean", parent.nom);
+        assertEquals(30, parent.age);
+        assertEquals(7, person.code);
+        assertEquals(10, person.constant);
+        assertEquals(20, ChildPerson.shared);
+    }
+
+    @Test
+    void requiresNoArgumentConstructorForObjects() {
+        assertThrows(NoSuchMethodException.class, () -> execute("/no-constructor", Map.of()));
     }
 
     @Test
@@ -167,6 +209,30 @@ class ParameterBindingTest {
         public HttpServletRequest request(HttpServletRequest request) { return request; }
 
         @UrlMapping("/object")
-        public Object object(Object object) { return object; }
+        public Object[] object(Person person, int page) { return new Object[] {person, page}; }
+
+        @UrlMapping("/inherited")
+        public ChildPerson inherited(ChildPerson person) { return person; }
+
+        @UrlMapping("/no-constructor")
+        public NoDefaultConstructor noConstructor(NoDefaultConstructor person) { return person; }
+    }
+
+    public static class Person {
+        private String nom = "inconnu";
+        private int age = 18;
+        private boolean actif;
+        private Double note = 10.0;
+    }
+
+    public static class ChildPerson extends Person {
+        private int code;
+        private final int constant = 10;
+        private static int shared = 20;
+    }
+
+    public static class NoDefaultConstructor {
+        public NoDefaultConstructor(String nom) {
+        }
     }
 }

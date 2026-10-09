@@ -3,6 +3,7 @@ package test.controller;
 import Fitahianafw.annotation.Controller;
 import Fitahianafw.annotation.UrlMapping;
 import Fitahianafw.model.ModelView;
+import test.model.Personne;
 
 @Controller
 public class TestController {
@@ -23,5 +24,10 @@ public class TestController {
                 .addObject("age", age)
                 .addObject("actif", actif)
                 .addObject("note", note);
+    }
+
+    @UrlMapping(value = "/test/objet", httpMethod = Fitahianafw.mapping.UrlHTTPMethod.POST)
+    public ModelView testObjet(Personne personne) {
+        return new ModelView("/objet").addObject("personne", personne);
     }
 }

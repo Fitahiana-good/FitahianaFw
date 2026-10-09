@@ -2,6 +2,8 @@ package Fitahianafw.util;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 import Fitahianafw.err.ParameterBindingException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,7 +12,8 @@ public final class ParameterBinder {
     private ParameterBinder() {
     }
 
-    public static Object[] resolveArguments(Method method, HttpServletRequest request) {
+    public static Object[] resolveArguments(Method method, HttpServletRequest request)
+            throws ReflectiveOperationException {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
@@ -21,7 +24,8 @@ public final class ParameterBinder {
                 continue;
             }
             if (!isSimpleType(type)) {
-                throw new IllegalArgumentException("Type de paramètre non supporté : " + type.getName());
+                arguments[i] = fillObject(type, request);
+                continue;
             }
             if (!parameter.isNamePresent()) {
                 throw new IllegalArgumentException("Configurer <parameters>true</parameters> dans le pom.xml du contrôleur : "
@@ -31,6 +35,33 @@ public final class ParameterBinder {
             arguments[i] = convert(request == null ? null : request.getParameter(name), type, name);
         }
         return arguments;
+    }
+
+    private static Object fillObject(Class<?> type, HttpServletRequest request)
+            throws ReflectiveOperationException {
+        // Comme dans NathaFw, l'objet doit avoir un constructeur sans argument.
+        Object instance = type.getDeclaredConstructor().newInstance();
+        for (Class<?> current = type; current != Object.class; current = current.getSuperclass()) {
+            for (Field field : current.getDeclaredFields()) {
+                if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())
+                        || Modifier.isFinal(field.getModifiers())) {
+                    continue;
+                }
+                // Les noms HTTP correspondent directement aux noms des champs : nom, age, etc.
+                String value = request == null ? null : request.getParameter(field.getName());
+                if (value == null) {
+                    continue;
+                }
+                if (!isSimpleType(field.getType())) {
+                    throw new IllegalArgumentException("Type de champ non supporté : "
+                            + type.getName() + "." + field.getName());
+                }
+                Object converted = convert(value, field.getType(), field.getName());
+                field.setAccessible(true);
+                field.set(instance, converted);
+            }
+        }
+        return instance;
     }
 
     private static boolean isSimpleType(Class<?> type) {
