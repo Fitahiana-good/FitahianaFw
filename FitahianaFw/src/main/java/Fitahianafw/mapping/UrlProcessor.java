@@ -9,6 +9,8 @@ import Fitahianafw.annotation.UrlMapping;
 import Fitahianafw.err.UrlAlreadyDefinedException;
 import Fitahianafw.err.UrlNotSupportedException;
 import Fitahianafw.util.interfaces.AnnotatedClassesProcessor;
+import Fitahianafw.util.ParameterBinder;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class UrlProcessor implements AnnotatedClassesProcessor {
     private final List<Class<?>> controllerClasses = new ArrayList<>();
@@ -37,11 +39,17 @@ public class UrlProcessor implements AnnotatedClassesProcessor {
     }
 
     public Object executeRequest(UrlKey url) throws UrlNotSupportedException, ReflectiveOperationException {
+        return executeRequest(url, null);
+    }
+
+    public Object executeRequest(UrlKey url, HttpServletRequest request)
+            throws UrlNotSupportedException, ReflectiveOperationException {
         if (!urlMappings.containsKey(url)) {
             throw new UrlNotSupportedException(url, urlMappings);
         }
         UrlControllerMap mapping = urlMappings.get(url);
-        return mapping.getReflectMethod().invoke(mapping.getPrototypeSeed());
+        Object[] arguments = ParameterBinder.resolveArguments(mapping.getReflectMethod(), request);
+        return mapping.getReflectMethod().invoke(mapping.getPrototypeSeed(), arguments);
     }
 
     public List<Class<?>> getControllerClasses() {

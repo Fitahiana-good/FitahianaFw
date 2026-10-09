@@ -14,4 +14,14 @@ public class TestController {
         modelView.addObject("nomFramework", "FitahianaFw");
         return modelView;
     }
+
+    @UrlMapping(value = "/test/primitives", httpMethod = Fitahianafw.mapping.UrlHTTPMethod.POST)
+    public ModelView testPrimitives(String nom, int age,
+            boolean actif, Double note) {
+        return new ModelView("/primitives")
+                .addObject("nom", nom)
+                .addObject("age", age)
+                .addObject("actif", actif)
+                .addObject("note", note);
+    }
 }

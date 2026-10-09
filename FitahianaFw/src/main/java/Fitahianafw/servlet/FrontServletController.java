@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import Fitahianafw.err.UrlNotSupportedException;
+import Fitahianafw.err.ParameterBindingException;
 import Fitahianafw.mapping.UrlHTTPMethod;
 import Fitahianafw.mapping.UrlKey;
 import Fitahianafw.mapping.UrlProcessor;
@@ -29,7 +30,7 @@ public class FrontServletController extends HttpServlet {
             throws UrlNotSupportedException, ReflectiveOperationException {
         String uri = getRequestedUrl(request);
         UrlHTTPMethod method = UrlHTTPMethod.buildUrlHTTPMethod(request.getMethod());
-        return urlProcessor.executeRequest(new UrlKey(uri, method));
+        return urlProcessor.executeRequest(new UrlKey(uri, method), request);
     }
 
     private String getRequestedUrl(HttpServletRequest request) {
@@ -53,6 +54,7 @@ public class FrontServletController extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
         response.setContentType("text/html;charset=UTF-8");
         try {
+            request.setCharacterEncoding("UTF-8");
             Object result = executeRequest(request);
             if (result instanceof ModelView modelView) {
                 forwardToView(request, response, modelView);
@@ -62,6 +64,9 @@ public class FrontServletController extends HttpServlet {
             } else {
                 writeHtml(response, "Résultat", escapeHtml(String.valueOf(result)));
             }
+        } catch (ParameterBindingException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeHtml(response, "400 - Paramètre invalide", escapeHtml(e.getMessage()));
         } catch (UrlNotSupportedException e) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             writeHtml(response, "404 - Route introuvable", "La route demandée n'est pas supportée.");
